@@ -11,8 +11,13 @@ const App: Component = () => {
   const values = '5 6 7 4 5 3 6 6 9 7 5 9 8 6'.split(' ').map(Number);
   const root = initMinimax(parse(sizes, values));
   console.log(root);
+  let self;
   return (
-    <MinimaxTree root={root} />
+    <div class="relative font-body">
+      <div class="flex justify-center">
+        <MinimaxTree root={root} />
+      </div>
+    </div>
   );
 };
 
