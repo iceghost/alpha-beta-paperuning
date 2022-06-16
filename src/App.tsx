@@ -2,6 +2,7 @@ import { initMinimax } from '$lib/minimax';
 import { parse } from '$lib/parse';
 import { wrapAll } from '$lib/proxy';
 import { Component, createSignal } from 'solid-js';
+import MinimaxTree from './components/MinimaxTree';
 
 const App: Component = () => {
   const [count, setCount] = createSignal(0);
@@ -11,13 +12,7 @@ const App: Component = () => {
   const root = initMinimax(parse(sizes, values));
   console.log(root);
   return (
-    <button
-      onClick={() => {
-        setCount(count() + 1);
-      }}
-    >
-      {count()}
-    </button>
+    <MinimaxTree root={root} />
   );
 };
 
