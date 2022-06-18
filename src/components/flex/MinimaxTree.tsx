@@ -12,10 +12,11 @@ import Connect from './Connect';
 
 const MinimaxTree: Component<{
   root: MinimaxNode;
+  container?: HTMLDivElement;
   depth?: number;
   ref?: Ref<HTMLDivElement>;
 }> = (props) => {
-  const merged = mergeProps({ depth: 0 }, props);
+  const merged = mergeProps({ depth: 0, isContainer: true }, props);
   const childRefs = new Array(props.root.children.length);
   const setChildRefs = new Array(props.root.children.length);
   for (let i = 0; i < props.root.children.length; i++) {
@@ -55,10 +56,15 @@ const MinimaxTree: Component<{
               <MinimaxTree
                 root={child}
                 depth={merged.depth + 1}
+                container={props.container}
                 ref={setChildRefs[i()]}
               />
-              <Show when={childRefs[i()]() && selfRef()}>
-                <Connect parent={selfRef()!} child={childRefs[i()]()!} />
+              <Show when={childRefs[i()]() && selfRef() && props.container}>
+                <Connect
+                  parent={selfRef()!}
+                  child={childRefs[i()]()!}
+                  container={props.container!}
+                />
               </Show>
             </>
           )}

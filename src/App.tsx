@@ -1,8 +1,7 @@
 import { initMinimax } from '$lib/minimax';
 import { parse } from '$lib/parse';
-import { wrapAll } from '$lib/proxy';
 import { Component, createSignal } from 'solid-js';
-import MinimaxTree from './components/MinimaxTree';
+import MinimaxTree from './components/flex/MinimaxTree';
 
 const App: Component = () => {
   const [count, setCount] = createSignal(0);
@@ -11,11 +10,13 @@ const App: Component = () => {
   const values = '5 6 7 4 5 3 6 6 9 7 5 9 8 6'.split(' ').map(Number);
   const root = initMinimax(parse(sizes, values));
   console.log(root);
-  let self;
+  let [container, setContainer] = createSignal<HTMLDivElement>();
   return (
-    <div class="relative font-body">
-      <div class="flex justify-center">
-        <MinimaxTree root={root} />
+    <div class="font-body">
+      <div class="flex justify-start overflow-x-scroll">
+        <div class="relative flex transform" ref={setContainer}>
+          <MinimaxTree root={root} container={container()} />
+        </div>
       </div>
     </div>
   );
