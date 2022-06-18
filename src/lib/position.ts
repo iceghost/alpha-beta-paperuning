@@ -1,7 +1,7 @@
 import { Node } from '$lib/parse';
 
-interface PositionNode<T> extends Node<T> {
-  dimensions: { left: number; width: number };
+export interface PositionNode<T> extends Node<T> {
+  dimensions: { left: number; top: number; width: number; height: number };
   rootPosition: { left: number; top: number };
 }
 
@@ -14,17 +14,25 @@ export function computePosition<
   let baseLeft = left;
 
   const children = new Array<NewNode<T, U>>(root.children.length);
+  let height = 1;
   for (const key in root.children) {
     const child = root.children[key];
 
     children[key] = computePosition<T, U>(child, left, top + 1);
 
     left += children[key].dimensions.width;
+
+    height = Math.max(height, children[key].dimensions.height + 1);
   }
 
   return {
     ...root,
-    dimensions: { left: baseLeft, width: Math.max(1, left - baseLeft) },
+    dimensions: {
+      left: baseLeft,
+      top,
+      width: Math.max(1, left - baseLeft),
+      height,
+    },
     rootPosition: { left: baseLeft + Math.trunc((left - baseLeft) / 2), top },
     children,
   };
