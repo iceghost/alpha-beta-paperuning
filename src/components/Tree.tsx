@@ -5,15 +5,18 @@ import {
   mergeProps,
   For,
   createContext,
+  createEffect,
   JSX,
   Accessor,
   createMemo,
   useContext,
   Switch,
   Match,
+  Setter,
 } from 'solid-js';
 import { scaleLinear } from 'd3-scale';
 import { createElementSize } from '@solid-primitives/resize-observer';
+import { useTableMachine } from './TableMachine';
 
 const ScaleContext = createContext<
   [
@@ -69,23 +72,61 @@ const MinimaxRoot: Component<{
   root: PositionNode<number>;
 }> = (props) => {
   let [container, setContainer] = createSignal<SVGSVGElement>();
+  const [state, send] = useTableMachine()!;
 
   let size = createElementSize(container);
 
+  createEffect(() => {
+    console.log(state.value);
+  });
+
   return (
-    <ScaleProvider
-      svgWidth={size.width || 0}
-      svgHeight={size.height || 0}
-      width={props.root.dimensions.width}
-      height={props.root.dimensions.height}
-      size={30}
-    >
+    <div class="flex flex-col h-full">
+      <div class="space-x-5">
+        <button
+          class="border uppercase px-2 py-1"
+          classList={{
+            'bg-green-500 text-white font-bold': state.can({ type: 'GO DOWN' }),
+          }}
+          onClick={() => send({ type: 'GO DOWN' })}
+        >
+          go down
+        </button>
+        <button
+          class="border uppercase px-2 py-1"
+          classList={{
+            'bg-green-500 text-white font-bold': state.can({
+              type: 'FILL ALPHA BETA',
+            }),
+          }}
+          onClick={() => send({ type: 'FILL ALPHA BETA' })}
+        >
+          fill alpha beta
+        </button>
+        <button
+          class="border uppercase px-2 py-1"
+          classList={{
+            'bg-green-500 text-white font-bold': state.can({ type: 'GO UP' }),
+          }}
+          onClick={() => send({ type: 'GO UP' })}
+        >
+          go up
+        </button>
+      </div>
       <div ref={setContainer} class="w-full h-full">
         <svg class="w-full h-full">
-          <MinimaxNode node={props.root} />
+          <ScaleProvider
+            svgWidth={size.width || 0}
+            svgHeight={size.height || 0}
+            width={props.root.dimensions.width}
+            height={props.root.dimensions.height}
+            size={30}
+          >
+            <MinimaxNode node={props.root} />
+          </ScaleProvider>
         </svg>
       </div>
-    </ScaleProvider>
+    </div>
   );
 };
 
@@ -93,6 +134,11 @@ const MinimaxNode: Component<{
   node: PositionNode<number>;
 }> = (props) => {
   const [{ svgX, svgY, size }] = useScale()!;
+  const [state, send] = useTableMachine()!;
+
+  const selectable = () =>
+    state.can({ type: 'SELECT CHILD', child: props.node });
+
   return (
     <g>
       <For each={props.node.children}>
@@ -110,35 +156,37 @@ const MinimaxNode: Component<{
           </g>
         )}
       </For>
-
-      <Switch>
-        <Match when={props.node.rootPosition.top % 2 == 0}>
-          <rect
-            x={svgX()(props.node.rootPosition.left) - size() / 2}
-            y={svgY()(props.node.rootPosition.top) - size() / 2}
-            width={size()}
-            height={size()}
-            class="fill-white stroke-black"
-          />
-        </Match>
-        <Match when={props.node.rootPosition.top % 2 == 1}>
-          <circle
-            cx={svgX()(props.node.rootPosition.left)}
-            cy={svgY()(props.node.rootPosition.top)}
-            r={size() / 2}
-            class="fill-white stroke-black"
-          />
-        </Match>
-      </Switch>
-
-      <text
-        x={svgX()(props.node.rootPosition.left)}
-        y={svgY()(props.node.rootPosition.top)}
-        text-anchor="middle"
-        dominant-baseline="middle"
+      <g
+        classList={{
+          'cursor-pointer': state.can({
+            type: 'SELECT CHILD',
+            child: props.node,
+          }),
+        }}
+        onClick={() => send({ type: 'SELECT CHILD', child: props.node })}
       >
-        {props.node.value}
-      </text>
+        <rect
+          x={svgX()(props.node.rootPosition.left) - size() / 2}
+          y={svgY()(props.node.rootPosition.top) - size() / 2}
+          width={size()}
+          height={size()}
+          rx={props.node.rootPosition.top % 2 == 0 ? 5 : 100}
+          class="fill-white"
+          classList={{
+            'stroke-black': !selectable(),
+            'stroke-green-500': selectable(),
+          }}
+        />
+
+        <text
+          x={svgX()(props.node.rootPosition.left)}
+          y={svgY()(props.node.rootPosition.top)}
+          text-anchor="middle"
+          dominant-baseline="middle"
+        >
+          {props.node.label}
+        </text>
+      </g>
     </g>
   );
 };

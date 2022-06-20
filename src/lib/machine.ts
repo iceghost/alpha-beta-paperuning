@@ -8,19 +8,25 @@ import {
   BaseActionObject,
   ServiceMap,
   State,
+  InterpreterOptions,
 } from 'xstate';
 import { Node } from './parse';
-import { onCleanup, batch } from 'solid-js';
+import { onCleanup, batch, createContext, Component, JSX } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 
-export interface Table<N> {
+export interface Table {
   type: 'min' | 'max';
-  headerRow: { node: N; alpha: number; beta: number };
-  valueRows: { node: N; value: number; alpha: number; beta: number }[];
-  questionRow?: { node: N; value?: number };
+  headerRow: { node: Node<number>; alpha: number; beta: number };
+  valueRows: {
+    node: Node<number>;
+    value: number;
+    alpha: number;
+    beta: number;
+  }[];
+  questionRow?: { node: Node<number>; value?: number };
 }
 
-function getAlphaBeta<N>(table: Table<N>): {
+function getAlphaBeta<N>(table: Table): {
   alpha: number;
   beta: number;
 } {
@@ -31,14 +37,14 @@ function getAlphaBeta<N>(table: Table<N>): {
   return { ...table.headerRow };
 }
 
-export function newMachine<N extends Node<number>>(root: N) {
+export function newMachine(root: Node<number>) {
   return createMachine(
     {
       schema: {
-        context: {} as { others: Table<N>[]; current: Table<N> },
+        context: {} as { others: Table[]; current: Table },
         events: {} as
           | { type: 'GO DOWN' }
-          | { type: 'SELECT CHILD'; child: N }
+          | { type: 'SELECT CHILD'; child: Node<number> }
           | { type: 'GO UP' }
           | { type: 'FILL ALPHA BETA' },
       },
@@ -238,19 +244,37 @@ export function newMachine<N extends Node<number>>(root: N) {
 }
 
 // https://codesandbox.io/s/xstate-solid-example-dgpd7
-export function useMachine<N extends Node<number>>(root: N) {
-  const service = interpret(newMachine(root));
+export function useMachine<A, B, C extends EventObject>(
+  machine: StateMachine<A, B, C>,
+  options: InterpreterOptions = {}
+) {
+  const service = interpret(machine, options);
 
-  const [state, setState] = createStore(service.getSnapshot());
-
+  const [state, setState] = createStore({
+    ...service.initialState,
+    matches(arg: any) {
+      // access state to track on value access
+      state.value;
+      return service.state.matches(arg);
+    },
+    can(
+      arg: typeof service.state.can extends (arg: infer T) => any ? T : never
+    ) {
+      state.value;
+      return service.state.can(arg);
+    },
+  });
   service.onTransition((s) => {
-    setState(reconcile(s));
+    // only focus on stuff that actually changes
+    batch(() => {
+      setState('value', s.value);
+      // diff data to only update values that changes
+      setState('context', s.context);
+    });
   });
 
   service.start();
   onCleanup(() => service.stop());
-  if (typeof state == 'function') {
-    throw new Error('bruh???');
-  }
-  return [state, service.send];
+
+  return [state, service.send] as const;
 }
