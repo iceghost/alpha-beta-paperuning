@@ -1,8 +1,9 @@
 import { bfsLabel } from '$lib/label';
+import { useMachine } from '$lib/machine';
 import { initMinimax } from '$lib/minimax';
 import { parse } from '$lib/parse';
 import { computePosition } from '$lib/position';
-import { Component, createSignal } from 'solid-js';
+import { Component, createEffect, createSignal } from 'solid-js';
 // import MinimaxTree from './components/flex/MinimaxTree';
 import MinimaxTree from './components/Tree';
 
@@ -14,9 +15,12 @@ const App: Component = () => {
   console.log(parse(sizes, values))
   const root = computePosition(bfsLabel(initMinimax(parse(sizes, values))));
 
-  
+  const [state, send] = useMachine(root);
 
-  console.log(root);
+  createEffect(() => {
+    console.log(state);
+  })
+
   let [container, setContainer] = createSignal<HTMLDivElement>();
   return (
     <div class="font-body">

@@ -1,5 +1,17 @@
-import { createMachine, assign } from 'xstate';
+import {
+  createMachine,
+  assign,
+  interpret,
+  StateMachine,
+  EventObject,
+  Typestate,
+  BaseActionObject,
+  ServiceMap,
+  State,
+} from 'xstate';
 import { Node } from './parse';
+import { onCleanup, batch } from 'solid-js';
+import { createStore, reconcile } from 'solid-js/store';
 
 export interface Table<N> {
   type: 'min' | 'max';
@@ -19,7 +31,7 @@ function getAlphaBeta<N>(table: Table<N>): {
   return { ...table.headerRow };
 }
 
-function newMachine<N extends Node<number>>(root: N) {
+export function newMachine<N extends Node<number>>(root: N) {
   return createMachine(
     {
       schema: {
@@ -48,7 +60,7 @@ function newMachine<N extends Node<number>>(root: N) {
         'current table with value child': {
           description: 'alpha, beta is updated',
           always: {
-            cond: 'no more chilren or pruned',
+            cond: 'no more children or pruned',
             target: 'completed current table',
           },
           on: {
@@ -107,18 +119,17 @@ function newMachine<N extends Node<number>>(root: N) {
         value: (ctx) => {
           return ctx.current.questionRow!.node.value !== null;
         },
-        'no more chilren or pruned': (ctx) => {
+        'no more children or pruned': (ctx) => {
           const current = ctx.current;
 
           // no more children
           if (
-            current.valueRows[0].node.children.length ==
-            current.valueRows.length
+            current.headerRow.node.children.length == current.valueRows.length
           )
             return true;
 
           // pruned
-          const { alpha, beta } = current.valueRows.at(-1)!;
+          const { alpha, beta } = getAlphaBeta(ctx.current);
           if (alpha >= beta) return true;
 
           return false;
@@ -128,8 +139,7 @@ function newMachine<N extends Node<number>>(root: N) {
           const current = ctx.current;
 
           // is child
-          if (!current.valueRows[0].node.children.includes(e.child))
-            return false;
+          if (!current.headerRow.node.children.includes(e.child)) return false;
 
           // is unvisited
           if (current.valueRows.some((row) => row.node == e.child))
@@ -225,4 +235,22 @@ function newMachine<N extends Node<number>>(root: N) {
       },
     }
   );
+}
+
+// https://codesandbox.io/s/xstate-solid-example-dgpd7
+export function useMachine<N extends Node<number>>(root: N) {
+  const service = interpret(newMachine(root));
+
+  const [state, setState] = createStore(service.getSnapshot());
+
+  service.onTransition((s) => {
+    setState(reconcile(s));
+  });
+
+  service.start();
+  onCleanup(() => service.stop());
+  if (typeof state == 'function') {
+    throw new Error('bruh???');
+  }
+  return [state, service.send];
 }
