@@ -17,6 +17,7 @@ import {
 import { scaleLinear } from 'd3-scale';
 import { createElementSize } from '@solid-primitives/resize-observer';
 import { useTableMachine } from './TableMachine';
+import Table from './Table';
 
 const ScaleContext = createContext<
   [
@@ -81,50 +82,60 @@ const MinimaxRoot: Component<{
   });
 
   return (
-    <div class="flex flex-col h-full">
-      <div class="space-x-5">
-        <button
-          class="border uppercase px-2 py-1"
-          classList={{
-            'bg-green-500 text-white font-bold': state.can({ type: 'GO DOWN' }),
-          }}
-          onClick={() => send({ type: 'GO DOWN' })}
-        >
-          go down
-        </button>
-        <button
-          class="border uppercase px-2 py-1"
-          classList={{
-            'bg-green-500 text-white font-bold': state.can({
-              type: 'FILL ALPHA BETA',
-            }),
-          }}
-          onClick={() => send({ type: 'FILL ALPHA BETA' })}
-        >
-          fill alpha beta
-        </button>
-        <button
-          class="border uppercase px-2 py-1"
-          classList={{
-            'bg-green-500 text-white font-bold': state.can({ type: 'GO UP' }),
-          }}
-          onClick={() => send({ type: 'GO UP' })}
-        >
-          go up
-        </button>
+    <div class="flex w-full h-full items-start">
+      <div class="flex w-full p-5 items-start">
+        <For each={state.context.others}>
+          {(table) => <Table table={table} />}
+        </For>
+        <Table table={state.context.current} />
       </div>
-      <div ref={setContainer} class="w-full h-full">
-        <svg class="w-full h-full">
-          <ScaleProvider
-            svgWidth={size.width || 0}
-            svgHeight={size.height || 0}
-            width={props.root.dimensions.width}
-            height={props.root.dimensions.height}
-            size={30}
+      <div class="flex flex-col h-full">
+        <div class="space-x-5">
+          <button
+            class="border uppercase px-2 py-1"
+            classList={{
+              'bg-green-500 text-white font-bold': state.can({
+                type: 'GO DOWN',
+              }),
+            }}
+            onClick={() => send({ type: 'GO DOWN' })}
           >
-            <MinimaxNode node={props.root} />
-          </ScaleProvider>
-        </svg>
+            go down
+          </button>
+          <button
+            class="border uppercase px-2 py-1"
+            classList={{
+              'bg-green-500 text-white font-bold': state.can({
+                type: 'FILL ALPHA BETA',
+              }),
+            }}
+            onClick={() => send({ type: 'FILL ALPHA BETA' })}
+          >
+            fill alpha beta
+          </button>
+          <button
+            class="border uppercase px-2 py-1"
+            classList={{
+              'bg-green-500 text-white font-bold': state.can({ type: 'GO UP' }),
+            }}
+            onClick={() => send({ type: 'GO UP' })}
+          >
+            go up
+          </button>
+        </div>
+        <div ref={setContainer} class="w-full h-full">
+          <svg class="w-full h-full">
+            <ScaleProvider
+              svgWidth={size.width || 0}
+              svgHeight={size.height || 0}
+              width={props.root.dimensions.width}
+              height={props.root.dimensions.height}
+              size={30}
+            >
+              <MinimaxNode node={props.root} />
+            </ScaleProvider>
+          </svg>
+        </div>
       </div>
     </div>
   );
@@ -171,10 +182,9 @@ const MinimaxNode: Component<{
           width={size()}
           height={size()}
           rx={props.node.rootPosition.top % 2 == 0 ? 5 : 100}
-          class="fill-white"
           classList={{
-            'stroke-black': !selectable(),
-            'stroke-green-500': selectable(),
+            'fill-white stroke-black': !selectable(),
+            'fill-green-500': selectable(),
           }}
         />
 
@@ -183,6 +193,9 @@ const MinimaxNode: Component<{
           y={svgY()(props.node.rootPosition.top)}
           text-anchor="middle"
           dominant-baseline="middle"
+          classList={{
+            'fill-white': selectable(),
+          }}
         >
           {props.node.label}
         </text>
