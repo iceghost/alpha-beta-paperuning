@@ -1,69 +1,127 @@
-import { produce } from 'immer';
-import { Node } from './parse';
-import { DeepReadonly } from './utils';
+import { produce, castDraft, Immutable, immerable } from 'immer';
 
-interface ABNode extends Node<number> {
-    // depth for determine min node or max node
-    depth: number;
-    initialAlpha: number | null;
-    initialBeta: number | null;
-    children: (this &
-        (
-            | {
-                  // unvisited
-                  type: 'pending';
-                  initialAlpha: null;
-                  initialBeta: null;
-              }
-            | {
-                  // currently visiting, no value yet
-                  type: 'questioning';
-                  value: null;
-                  initialAlpha: number;
-                  initialBeta: number;
-              }
-            | {
-                  // visited, has value
-                  type: 'visited';
-                  value: number;
-                  initialAlpha: number;
-                  initialBeta: number;
-              }
-            | {
-                  // filled with alpha beta
-                  type: 'filled';
-                  value: number;
-                  computedAlpha: number;
-                  computedBeta: number;
-                  initialAlpha: number;
-                  initialBeta: number;
-              }
-            | {
-                  // pruned
-                  type: 'pruned';
-                  initialAlpha: null;
-                  initialBeta: null;
-              }
-        ))[];
+interface ExploringTree<N, E> {
+    readonly node: N;
+    readonly exploreds: ExploredTree<N, E>[];
+    readonly pruneds?: never;
+    readonly pendings: ExploringTree<N, E>[];
+
+    [immerable]: true;
+    isDone(): boolean;
+    intoExplored(): ExploredTree<N, E>;
 }
 
-export function wrapAB<T extends Node<number>>(root: T, depth = 0): T & ABNode {
-    const newRoot: T & ABNode = {
-        ...root,
-        depth,
-        initialAlpha: -Infinity,
-        initialBeta: +Infinity,
-        children: new Array(root.children.length),
-    };
-    for (const key in root.children) {
-        newRoot.children[key] = {
-            ...wrapAB(root.children[key], depth + 1),
-            type: 'pending',
-            initialAlpha: null,
-            initialBeta: null,
-        };
-    }
-    return newRoot;
+interface ExploredTree<N, E> {
+    readonly node: E;
+    readonly exploreds: ExploredTree<N, E>[];
+    readonly pendings?: never;
+    readonly pruneds: ExploringTree<N, E>[];
 }
 
+type Zipper<N, E> = {
+    current: ExploringTree<N, E> | ExploredTree<N, E>;
+    breadcrumps: ExploringTree<N, E>[];
+};
 
+export const explore = <N, E>(zipper: Zipper<N, E>): Zipper<N, E> => {
+    return produce(zipper, (draft) => {
+        // already explored
+        if (draft.current.pendings === undefined) {
+            return;
+        }
+
+        // no more pendings
+        const nextChild = draft.current.pendings.pop();
+        if (!nextChild) {
+            draft.current = castDraft(draft.current.intoExplored());
+            return;
+        }
+
+        // go down
+        draft.breadcrumps.push(draft.current);
+        if (nextChild.isDone()) {
+            // if child is already leaf
+            draft.current = castDraft(nextChild.intoExplored());
+            return;
+        } else {
+            draft.current = nextChild;
+            return;
+        }
+    });
+};
+
+export const done = <N, E>(zipper: Zipper<N, E>): Zipper<N, E> => {
+    return produce(zipper, (draft) => {
+        // not done yet
+        if (draft.current.pendings) return;
+
+        // no more parent to report up
+        const parent = draft.breadcrumps.pop();
+        if (!parent) return;
+
+        parent.exploreds.push(draft.current);
+        draft.current = parent;
+    });
+};
+
+interface ExploringNode {
+    value: number | null;
+    initialAlpha: number;
+    initialBeta: number;
+}
+
+interface ExploredNode extends ExploringNode {
+    value: number;
+    computedAlpha: number;
+    computedBeta: number;
+}
+
+// class ExploringABTree implements ExploringTree<ExploringNode, ExploredNode> {
+//     node: ExploringNode;
+//     exploreds: ExploredABTree[];
+//     pruneds?: undefined;
+//     pendings: ExploringABTree[];
+
+//     constructor() {
+//         this.node = {
+//             value: null,
+//             initialAlpha: -Infinity,
+//             initialBeta: +Infinity,
+//         };
+//         this.exploreds = [];
+//         this.pendings = [];
+//     }
+
+//     [immerable] = true as const;
+
+//     isDone(): boolean {
+//         // no more children
+//         if (this.pendings.length == 0) return true;
+
+//         // pruning
+//         const latest = this.exploreds.at(-1);
+//         if (latest) {
+//             const { computedAlpha, computedBeta } = latest.node;
+//             if (computedAlpha >= computedBeta) return true;
+//         }
+
+//         return false;
+//     }
+
+//     intoExplored() {
+//         return produce(this, (draft) => {
+//             if (this.node.value) {
+//             }
+//         });
+//     }
+// }
+
+// class ExploredABTree implements ExploredTree<ExploringNode, ExploredNode> {
+//     node: ExploredNode;
+//     exploreds: ExploredABTree[];
+//     pruneds: ExploringABTree[];
+
+//     constructor(tree: ExploringABTree) {
+
+//     }
+// }
