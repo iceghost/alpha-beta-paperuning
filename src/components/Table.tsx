@@ -12,7 +12,7 @@ const format = (x: number) =>
 
 const Table: Component<{ table: TableType }> = (props) => {
   return (
-    <table>
+    <table class="border rounded-md">
       <thead>
         <tr>
           <th class="text-center px-2">{props.table.type}</th>

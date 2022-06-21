@@ -18,6 +18,7 @@ import { scaleLinear } from 'd3-scale';
 import { createElementSize } from '@solid-primitives/resize-observer';
 import { useTableMachine } from './TableMachine';
 import Table from './Table';
+import { LabeledNode } from '$lib/label';
 
 const ScaleContext = createContext<
   [
@@ -55,7 +56,11 @@ export const ScaleProvider: Component<{
       .domain([0, merged.height - 1])
       .range([
         merged.paddingY + merged.size / 2,
-        merged.svgHeight - merged.paddingY - merged.size / 2,
+        Math.min(
+          (2 * merged.height - 1) * merged.size,
+          merged.svgHeight - merged.paddingY
+        ) -
+          merged.size / 2,
       ])
   );
   const [size, setSize] = createSignal(merged.size);
@@ -70,7 +75,7 @@ export const ScaleProvider: Component<{
 const useScale = () => useContext(ScaleContext);
 
 const MinimaxRoot: Component<{
-  root: PositionNode<number>;
+  root: PositionNode<number> & LabeledNode<number>;
 }> = (props) => {
   let [container, setContainer] = createSignal<SVGSVGElement>();
   const [state, send] = useTableMachine()!;
@@ -83,7 +88,7 @@ const MinimaxRoot: Component<{
 
   return (
     <div class="flex w-full h-full items-start">
-      <div class="flex w-full p-5 items-start">
+      <div class="flex w-full p-5 items-start space-x-3">
         <For each={state.context.others}>
           {(table) => <Table table={table} />}
         </For>
@@ -142,7 +147,7 @@ const MinimaxRoot: Component<{
 };
 
 const MinimaxNode: Component<{
-  node: PositionNode<number>;
+  node: PositionNode<number> & LabeledNode<number>;
 }> = (props) => {
   const [{ svgX, svgY, size }] = useScale()!;
   const [state, send] = useTableMachine()!;
