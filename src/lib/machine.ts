@@ -10,20 +10,20 @@ import {
     State,
     InterpreterOptions,
 } from 'xstate';
-import { Node } from './parse';
+import { Tree } from './parse';
 import { onCleanup, batch, createContext, Component, JSX } from 'solid-js';
 import { createStore, reconcile } from 'solid-js/store';
 
 export interface Table {
     type: 'min' | 'max';
-    headerRow: { node: Node<number>; alpha: number; beta: number };
+    headerRow: { node: Tree<number>; alpha: number; beta: number };
     valueRows: {
-        node: Node<number>;
+        node: Tree<number>;
         value: number;
         alpha: number;
         beta: number;
     }[];
-    questionRow?: { node: Node<number>; value?: number };
+    questionRow?: { node: Tree<number>; value?: number };
 }
 
 function getAlphaBeta<N>(table: Table): {
@@ -37,14 +37,14 @@ function getAlphaBeta<N>(table: Table): {
     return { ...table.headerRow };
 }
 
-export function newMachine(root: Node<number>) {
+export function newMachine(root: Tree<number>) {
     return createMachine(
         {
             schema: {
                 context: {} as { others: Table[]; current: Table },
                 events: {} as
                     | { type: 'GO DOWN' }
-                    | { type: 'SELECT CHILD'; child: Node<number> }
+                    | { type: 'SELECT CHILD'; child: Tree<number> }
                     | { type: 'GO UP' }
                     | { type: 'FILL ALPHA BETA' },
             },
@@ -123,7 +123,7 @@ export function newMachine(root: Node<number>) {
         {
             guards: {
                 value: (ctx) => {
-                    return ctx.current.questionRow!.node.data !== null;
+                    return ctx.current.questionRow!.node.node !== null;
                 },
                 'no more children or pruned': (ctx) => {
                     const current = ctx.current;
@@ -214,7 +214,7 @@ export function newMachine(root: Node<number>) {
                 }),
                 resolveQuestionChild: assign({
                     current: ({ current }) => {
-                        const value = current.questionRow!.node.data;
+                        const value = current.questionRow!.node.node;
                         if (!value) return current;
                         return {
                             ...current,
