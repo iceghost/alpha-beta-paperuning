@@ -1,33 +1,32 @@
 import { Node } from '$lib/parse';
 import { newQueue } from './queue';
 
-export interface LabeledNode<T> extends Node<T> {
-    label: string;
-}
+export type LabeledNode<T> = Node<T & { label: string }>;
 
-type NewNode<T, U> = Omit<T, 'children'> & LabeledNode<U>;
-
-export function labelBFS<
-    T extends Node<U>,
-    U = T extends Node<infer V> ? V : never
->(root: T, labeler: (node: T) => string = defaultLabeler()): NewNode<T, U> {
+export function labelBFS<T extends object>(
+    root: Node<T>,
+    labeler: (data: Node<T>) => string = defaultLabeler()
+): LabeledNode<T> {
     // the way we're about to do needs some caution,
     // as we want to copy old nodes (create new objects),
     // rather than add label to existing nodes.
     // TypeScript doesn't allow this anyway, currently (as far as i know)
 
-    const newRoot: NewNode<T, U> = {
+    const newRoot: LabeledNode<T> = {
         ...root,
-        label: labeler(root),
+        data: {
+            ...root.data,
+            label: labeler(root),
+        },
         children: new Array(root.children.length),
     };
 
     // prepare queue for bfs, new node children should be holes
-    const queue = newQueue<[T, NewNode<T, U>]>();
+    const queue = newQueue<[Node<T>, LabeledNode<T>]>();
     queue.enqueue([root, newRoot]);
 
     // for BFS
-    let e: [T, NewNode<T, U>] | undefined;
+    let e: [Node<T>, LabeledNode<T>] | undefined;
     while ((e = queue.dequeue())) {
         let [oldNode, newNode] = e;
 
@@ -37,7 +36,10 @@ export function labelBFS<
             // mutate new node, add child to array hole
             newNode.children[key] = {
                 ...oldChild,
-                label: labeler(oldChild),
+                data: {
+                    ...oldChild.data,
+                    label: labeler(oldChild),
+                },
                 children: new Array(oldChild.children.length),
             };
 
