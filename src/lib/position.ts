@@ -1,39 +1,46 @@
 import { Node } from '$lib/parse';
 
-export interface PositionNode<T> extends Node<T> {
-  dimensions: { left: number; top: number; width: number; height: number };
-  rootPosition: { left: number; top: number };
+export interface Position {
+    dimensions: { left: number; top: number; width: number; height: number };
+    rootPosition: { left: number; top: number };
 }
 
-type NewNode<T, U> = Omit<T, 'children'> & PositionNode<U>;
+export type PositionedNode<U> = Node<U & Position>;
 
-export function computePosition<
-  T extends Node<U>,
-  U = T extends Node<infer V> ? V : never
->(root: T, left = 0, top = 0): NewNode<T, U> {
-  let baseLeft = left;
+export function computePosition<U extends object>(
+    root: Node<U>,
+    left = 0,
+    top = 0
+): PositionedNode<U> {
+    let baseLeft = left;
 
-  const children = new Array<NewNode<T, U>>(root.children.length);
-  let height = 1;
-  for (const key in root.children) {
-    const child = root.children[key];
+    const children = new Array<PositionedNode<U>>(root.children.length);
+    let height = 1;
+    for (const key in root.children) {
+        const child = root.children[key];
 
-    children[key] = computePosition<T, U>(child, left, top + 1);
+        children[key] = computePosition<U>(child, left, top + 1);
 
-    left += children[key].dimensions.width;
+        left += children[key].data.dimensions.width;
 
-    height = Math.max(height, children[key].dimensions.height + 1);
-  }
+        height = Math.max(height, children[key].data.dimensions.height + 1);
+    }
 
-  return {
-    ...root,
-    dimensions: {
-      left: baseLeft,
-      top,
-      width: Math.max(1, left - baseLeft),
-      height,
-    },
-    rootPosition: { left: baseLeft + Math.trunc((left - baseLeft) / 2), top },
-    children,
-  };
+    return {
+        ...root,
+        data: {
+            ...root.data,
+            dimensions: {
+                left: baseLeft,
+                top,
+                width: Math.max(1, left - baseLeft),
+                height,
+            },
+            rootPosition: {
+                left: baseLeft + Math.trunc((left - baseLeft) / 2),
+                top,
+            },
+        },
+        children,
+    };
 }
